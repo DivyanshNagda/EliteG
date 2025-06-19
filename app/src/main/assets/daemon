@@ -1,0 +1,48 @@
+#!/system/bin/sh
+
+LOGFILE="/data/local/tmp/eliteg-daemon.log"
+SCENE="com.dnagda.eliteG"
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOGFILE"
+}
+
+log "EliteG Daemon started."
+
+# Whitelist app for background and device idle
+cmd appops set $SCENE RUN_IN_BACKGROUND allow >/dev/null 2>&1
+cmd appops set $SCENE WRITE_SETTINGS allow >/dev/null 2>&1
+dumpsys deviceidle whitelist +$SCENE >/dev/null 2>&1
+
+# Main loop
+while true; do
+    # Check if ADB is running
+    ADB_STATUS=$(getprop init.svc.adbd)
+    if [ "$ADB_STATUS" != "running" ]; then
+        log "ADB not running. Attempting to start adbd."
+        setprop service.adb.root 1
+        setprop service.adb.tcp.port 5555
+        stop adbd
+        start adbd
+        sleep 2
+        NEW_STATUS=$(getprop init.svc.adbd)
+        if [ "$NEW_STATUS" = "running" ]; then
+            log "ADB started successfully."
+        else
+            log "Failed to start ADB."
+        fi
+    else
+        log "ADB is running."
+    fi
+
+    # Example: Monitor EliteG files/folder
+    if [ ! -d "/storage/emulated/0/Android/data/$SCENE" ]; then
+        log "EliteG data folder missing. Attempting to recreate."
+        mkdir -p "/storage/emulated/0/Android/data/$SCENE"
+    fi
+
+    # Example: Touch a heartbeat file
+    touch "/storage/emulated/0/Android/data/$SCENE/daemon_heartbeat"
+
+    sleep 60
+done

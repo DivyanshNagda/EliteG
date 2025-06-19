@@ -1,0 +1,138 @@
+<resources>
+    <!-- App Information -->
+    <string name="app_name">Elite G</string>
+    <string name="app_description">Android Game Booster - Optimize your gaming performance</string>
+    
+    <!-- Performance Settings -->
+    <string name="high_res_limit">100%</string>
+    <string name="low_res_limit">50%</string>
+    <string name="FPS">FPS</string>
+    <string name="performance_boost">Performance Boost</string>
+    
+    <!-- Game List -->
+    <string name="dummy_title">GameAppName (Example)</string>
+    <string name="dummy_package_name">PackageName (com.example.game)</string>
+    <string name="cant_find_game">Can\'t find your game?</string>
+    <string name="show_all_apps">Show all apps</string>
+    <string name="no_games_found">No games found</string>
+    <string name="loading_games">Loading games…</string>
+    
+    <!-- Resolution Display -->
+    <string name="resolution">Native:</string>
+    <string name="resolution_tweaked">Tweaked:</string>
+    <string name="progressive">p</string>
+    <string name="resolution_format">%1$dx%2$d%3$s</string>
+    
+    <!-- Recent Games -->
+    <string name="recent_games">Recently added games:</string>
+    <string name="empty_recent_game">Add Game</string>
+    <string name="add_game">Add Game</string>
+    <string name="remove_game">Remove Game</string>
+    
+    <!-- Settings -->
+    <string name="option_title">Settings</string>
+    <string name="option_aggressive_LMK">Kill Background Apps</string>
+    <string name="option_aggressive_LMK_desc">Terminate background apps to free memory</string>
+    <string name="option_kill_apps">Performance Optimizations</string>
+    <string name="option_kill_apps_desc">Apply system-level performance tweaks</string>
+    <string name="option_keep_DPI">Keep Stock DPI</string>
+    <string name="option_keep_DPI_desc">Maintain original screen density</string>
+    
+    <!-- Reset Dialog -->
+    <string name="reset_popup_title">Custom Resolution Detected</string>
+    <string name="reset_popup_text">A custom resolution is currently active. Would you like to revert to the original resolution?</string>
+    <string name="reset_popup_positive_choice">Reset Resolution</string>
+    <string name="reset_popup_negative_choice">Keep Current</string>
+    
+    <!-- ADB Permissions -->
+    <string name="no_root_popup_title">ADB Permissions Required</string>
+    <string name="no_root_popup_text">Elite G requires ADB permissions to modify system settings for game optimization.\n\nPlease follow the setup instructions to grant the required permissions.</string>
+    <string name="no_root_popup_positive_choice">Setup ADB Permissions</string>
+    <string name="no_root_popup_negative_choice">Exit App</string>
+    
+    <!-- Disclaimer -->
+    <string name="disclaimer_popup_title">Important Disclaimer</string>
+    <string name="disclaimer_popup_text">Elite G modifies system settings to optimize gaming performance. This software is provided \"AS IS\" without warranty.\n\nBy continuing, you acknowledge that you understand the risks and accept responsibility for any changes made to your device.</string>
+    <string name="disclaimer_popup_positive_choice">I Understand</string>
+    <string name="disclaimer_popup_negative_choice">Exit App</string>
+    
+    <!-- Remove Game Dialog -->
+    <string name="remove_popup_title">Remove Game</string>
+    <string name="remove_popup_text">Remove this game from your recent games list</string>
+    
+    <!-- Permission Errors -->
+    <string name="no_permission_popup_title">ADB Permissions Required</string>
+    <string name="no_permission_popup_text">Elite G requires ADB permissions to function properly.\n\nPlease follow the setup instructions to grant the required permissions for system-level optimizations.</string>
+    <string name="no_permission_popup_positive_choice">ADB Mode</string>
+    <string name="no_permission_popup_negative_choice">Exit App</string>
+    <string name="no_permission_toast">ADB permissions required for this feature</string>
+    
+    <!-- Success/Error Messages -->
+    <string name="game_added_success">Game added successfully</string>
+    <string name="game_removed_success">Game removed successfully</string>
+    <string name="settings_reset_success">Settings reset successfully</string>
+    <string name="resolution_applied_success">Resolution applied successfully</string>
+    <string name="permissions_granted_success">Permissions granted successfully</string>
+    <string name="command_copied_success">Command copied to clipboard</string>
+    
+    <string name="error_adding_game">Error adding game</string>
+    <string name="error_removing_game">Error removing game</string>
+    <string name="error_loading_games">Error loading games</string>
+    <string name="error_applying_resolution">Failed to apply resolution changes</string>
+    <string name="error_resetting_settings">Failed to reset some settings</string>
+    <string name="error_checking_permissions">Error checking permissions</string>
+    <string name="error_copying_command">Error copying command</string>
+    <string name="error_opening_help">Error opening help page</string>
+    <string name="error_starting_app">Error starting main app</string>
+    <string name="error_initializing_app">Error initializing app</string>
+    <string name="no_browser_available">No browser available to open help page</string>
+    <string name="adb_permission_not_checked">Permission Status: Not Checked</string>
+    
+    <!-- Performance Recommendations -->
+    <string name="performance_recommendation_title">Performance Recommendation</string>
+    <string name="performance_recommendation_message">Based on your device specs, we recommend using the \'%1$s\' profile with %2$d%% resolution scaling for optimal performance.</string>
+    <string name="apply_recommendation">Apply Recommendation</string>
+    <string name="keep_current_settings">Keep Current</string>
+    <string name="recommendation_applied">Recommendation applied</string>
+    
+    <!-- Accessibility -->
+    <string name="content_desc_launch_game">Launch %1$s</string>
+    <string name="content_desc_add_game_slot">Add game to slot %1$d</string>
+    <string name="content_desc_remove_game">Remove %1$s from recent games</string>
+    <string name="content_desc_settings_toggle">Toggle settings panel</string>
+    <string name="content_desc_resolution_slider">Adjust resolution scaling</string>
+    <string name="content_desc_reset_settings">Reset all settings to original values</string>
+    
+    <!-- Links -->
+    <string name="link_to_setup">https://github.com/DivyanshNagda/EliteG#setup</string>
+    <string name="link_to_github">https://github.com/DivyanshNagda/EliteG</string>
+    
+    <!-- Device Info -->
+    <string name="device_info_low_memory">Low Memory Device</string>
+    <string name="device_info_high_performance">High Performance Device</string>
+    <string name="device_info_memory_usage">Memory Usage: %1$d%%</string>
+    <string name="device_info_available_memory">Available: %1$d MB</string>
+    
+    <!-- App Shortcuts -->
+    <string name="shortcut_adb_setup_short">ADB Setup</string>
+    <string name="shortcut_adb_setup_long">Setup ADB Permissions</string>
+    
+    <!-- ADB Mode -->
+    <string name="adb_mode">ADB Mode</string>
+    <string name="open_adb_mode">Open ADB Mode</string>
+    <string name="adb_mode_description">Enable advanced features by running the provided ADB command on your PC. This will automate permission granting and setup.</string>
+    <string name="adb_mode_copied">Command copied!</string>
+    <string name="adb_mode_setup_instruction">App ko setup karne ke liye niche di gayi command ko PC par run karein:</string>
+    <string name="adb_mode_command">adb shell pm grant com.dnagda.EliteG android.permission.WRITE_SECURE_SETTINGS</string>
+    <string name="adb_mode_copy">Copy Command</string>
+    <string name="adb_mode_title">EliteG ADB Setup</string>
+    <string name="adb_tutorial">To enable all features, run this command in your PC terminal (after connecting your phone):\n</string>
+    
+    <!-- Added for MainActivity error/permission handling -->
+    <string name="ui_init_error">UI initialization error</string>
+    <string name="game_not_found">Game not found</string>
+    <string name="permission_not_granted">Permission not granted yet!</string>
+    <string name="permission_check_timeout">Permission check timed out. Please try again.</string>
+    <string name="storage_permission_rationale">Storage permissions are required for full functionality.</string>
+    <string name="storage_permission_denied">Storage permission denied. Some features may not work.</string>
+</resources>

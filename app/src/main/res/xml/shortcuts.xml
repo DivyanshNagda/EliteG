@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <!-- Quick launch shortcut -->
+    <shortcut
+        android:shortcutId="quick_launch"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/app_name"
+        android:shortcutLongLabel="@string/app_description">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.dnagda.eliteG"
+            android:targetClass="com.dnagda.eliteG.MainActivity" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+    
+    <!-- ADB Setup shortcut -->
+    <shortcut
+        android:shortcutId="adb_setup"
+        android:enabled="true"
+        android:icon="@drawable/ic_round_keyboard_arrow_up_24"
+        android:shortcutShortLabel="@string/shortcut_adb_setup_short"
+        android:shortcutLongLabel="@string/shortcut_adb_setup_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.dnagda.eliteG"
+            android:targetClass="com.dnagda.eliteG.ADBInstructionsActivity" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+    
+</shortcuts>

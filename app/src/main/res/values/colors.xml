@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary Brand Colors -->
+    <color name="colorPrimary">#3F41F8</color>
+    <color name="colorPrimaryDark">#1F2072</color>
+    <color name="colorPrimaryLight">#595BF7</color>
+    <color name="colorAccent">#FF1900</color>
+    <color name="colorSecondary">#5720FF</color>
+
+    <!-- Background Colors -->
+    <color name="backgroundTopStart">#3F41F8</color>
+    <color name="backgroundTopEnd">#595BF7</color>
+    <color name="backgroundDownStart">#FA5805</color>
+    <color name="backgroundDownEnd">#D100FF</color>
+    <color name="backgroundGameAppListStart">#16A1A5</color>
+    <color name="backgroundGameAppListEnd">#8ED9C0</color>
+    
+    <!-- Surface Colors -->
+    <color name="pureWhite">#FFFFFF</color>
+    <color name="impureWhite">#F8F7FC</color>
+    <color name="surfaceLight">#FAFAFA</color>
+    <color name="surfaceDark">#F5F5F5</color>
+    
+    <!-- Text Colors -->
+    <color name="textColor">#1F2072</color>
+    <color name="textColorSecondary">#7F7F7F</color>
+    <color name="textColorTertiary">#B0B0B0</color>
+    <color name="textTop">#1F2072</color>
+    <color name="recentGameTextColor">#FF1900</color>
+    <color name="textOnPrimary">#FFFFFF</color>
+    <color name="textOnSecondary">#FFFFFF</color>
+    
+    <!-- Neutral Colors -->
+    <color name="shadowBlack">#191919</color>
+    <color name="impureGrey">#7F7F7F</color>
+    <color name="lightGrey">#E0E0E0</color>
+    <color name="mediumGrey">#9E9E9E</color>
+    <color name="darkGrey">#424242</color>
+    
+    <!-- UI Component Colors -->
+    <color name="backgroundProgressBar">#E0E0E0</color>
+    <color name="progressBarFill">#3F41F8</color>
+    <color name="resSlider">#5720FF</color>
+    <color name="sliderThumb">#FF1900</color>
+    
+    <!-- Status Colors -->
+    <color name="successGreen">#4CAF50</color>
+    <color name="warningOrange">#FF9800</color>
+    <color name="errorRed">#F44336</color>
+    <color name="infoBlue">#2196F3</color>
+    
+    <!-- Semantic Colors -->
+    <color name="performance_high">#4CAF50</color>
+    <color name="performance_medium">#FF9800</color>
+    <color name="performance_low">#F44336</color>
+    
+    <!-- Overlay Colors -->
+    <color name="overlay_light">#80FFFFFF</color>
+    <color name="overlay_dark">#80000000</color>
+    <color name="scrim">#60000000</color>
+    
+    <!-- Button Colors -->
+    <color name="buttonPrimary">#3F41F8</color>
+    <color name="buttonSecondary">#FF1900</color>
+    <color name="buttonDisabled">#E0E0E0</color>
+    <color name="buttonTextDisabled">#9E9E9E</color>
+    
+    <!-- Card Colors -->
+    <color name="cardBackground">#FFFFFF</color>
+    <color name="cardShadow">#1A000000</color>
+    <color name="cardBorder">#E0E0E0</color>
+    
+    <!-- Legacy Compatibility -->
+    <color name="background_color">#F8F7FC</color>
+    <color name="text_primary">#1F2072</color>
+    <color name="text_secondary">#7F7F7F</color>
+
+</resources>
