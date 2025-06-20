@@ -34,7 +34,7 @@ public class GameAppManager {
     /**
      * Get list of game applications
      */
-    public static List<GameApp> getGameApps(MainActivity context, boolean onlyAddGames) {
+    public static List<GameApp> getGameApps(Context context, boolean onlyAddGames) {
         Logger.d(TAG, "Getting game apps, onlyAddGames: " + onlyAddGames);
         
         PackageManager packageManager = context.getPackageManager();
@@ -125,7 +125,12 @@ public class GameAppManager {
     /**
      * Check if package is valid for inclusion in game list
      */
-    private static boolean isValidPackage(MainActivity context, PackageInfo packageInfo, boolean onlyAddGames) {
+    private static boolean isValidPackage(Context context, PackageInfo packageInfo, boolean onlyAddGames) {
+        if (context == null) {
+            Logger.w(TAG, "Context is null");
+            return false;
+        }
+        
         // Basic validation
         if (isSystemPackage(packageInfo) || 
             packageInfo.packageName.equals(Constants.APP_PACKAGE_NAME) ||
@@ -133,13 +138,8 @@ public class GameAppManager {
             return false;
         }
 
-        // Check if already in recent games list
-        for (int i = 1; i <= Constants.MAX_RECENT_GAMES; i++) {
-            GameApp recentGame = context.settingsManager.getRecentGameApp(i);
-            if (recentGame != null && recentGame.getPackageName().equals(packageInfo.packageName)) {
-                return false;
-            }
-        }
+        // Skip recent games check for generic context usage
+        // Recent games filtering will be handled at the UI level
 
         return true;
     }
@@ -150,11 +150,28 @@ public class GameAppManager {
     private static void murderApps(MainActivity context) {
         Logger.d(TAG, "Starting background app termination");
         
+        if (context == null || context.isFinishing() || context.isDestroyed()) {
+            Logger.w(TAG, "Context is invalid - cannot kill background apps");
+            return;
+        }
+        
         PackageManager packageManager = context.getPackageManager();
-        List<PackageInfo> installedPackages = packageManager.getInstalledPackages(0);
+        List<PackageInfo> installedPackages;
+        
+        try {
+            installedPackages = packageManager.getInstalledPackages(PackageManager.GET_META_DATA);
+        } catch (Exception e) {
+            Logger.e(TAG, "Error getting installed packages", e);
+            return;
+        }
+        
         List<String> appsToKill = new ArrayList<>();
 
         for (PackageInfo packageInfo : installedPackages) {
+            if (packageInfo == null || packageInfo.packageName == null) {
+                continue; // Skip null entries
+            }
+            
             String packageName = packageInfo.packageName;
 
             // Check if app is killable
@@ -174,9 +191,28 @@ public class GameAppManager {
         Logger.d(TAG, "Killing " + appsToKill.size() + " background apps");
         
         // Kill apps in batches to avoid overwhelming the system
-        for (String packageName : appsToKill) {
+        for (int i = 0; i < appsToKill.size(); i++) {
+            if (context.isFinishing() || context.isDestroyed()) {
+                Logger.w(TAG, "Activity destroyed - stopping app killing");
+                break;
+            }
+            
+            String packageName = appsToKill.get(i);
             ExecuteADBCommands.forceStopApp(packageName);
+            
+            // Rate limit to prevent overwhelming system
+            if (i % 10 == 0 && i > 0) {
+                try {
+                    Thread.sleep(100); // Brief pause every 10 apps
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    Logger.w(TAG, "Interrupted while rate limiting app killing");
+                    break;
+                }
+            }
         }
+        
+        Logger.d(TAG, "Background app termination completed");
     }
 
     /**

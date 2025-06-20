@@ -161,7 +161,7 @@ public final class PerformanceUtils {
      * Validate resolution scale value
      */
     public static int validateResolutionScale(int scale) {
-        return Math.max(Constants.DEFAULT_RESOLUTION_SCALE, 
+        return Math.max(Constants.MIN_RESOLUTION_SCALE, 
                 Math.min(Constants.MAX_RESOLUTION_SCALE, scale));
     }
     

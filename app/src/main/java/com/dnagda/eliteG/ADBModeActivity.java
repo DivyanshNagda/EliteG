@@ -22,8 +22,21 @@ public class ADBModeActivity extends Activity {
         TextView adbModeInstructions = findViewById(R.id.adb_mode_instructions);
         TextView adbModeTitle = findViewById(R.id.adb_mode_title);
 
-        adbModeTitle.setText(getString(R.string.adb_mode_title));
-        adbModeInstructions.setText(getString(R.string.adb_mode_setup_instruction));
+        // Null checks for critical UI components
+        if (adbCommandText == null || btnCopy == null) {
+            Toast.makeText(this, "Error initializing ADB Mode", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        // Set text content with null safety
+        if (adbModeTitle != null) {
+            adbModeTitle.setText(getString(R.string.adb_mode_title));
+        }
+        if (adbModeInstructions != null) {
+            adbModeInstructions.setText(getString(R.string.adb_mode_setup_instruction));
+        }
+        
         String adbCommand = getString(R.string.adb_mode_command);
         adbCommandText.setText(adbCommand);
         btnCopy.setText(getString(R.string.adb_mode_copy));
@@ -31,12 +44,23 @@ public class ADBModeActivity extends Activity {
         btnCopy.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                ClipData clip = ClipData.newPlainText("ADB Command", adbCommandText.getText().toString());
-                clipboard.setPrimaryClip(clip);
-                Toast.makeText(ADBModeActivity.this, getString(R.string.adb_mode_copied), Toast.LENGTH_SHORT).show();
+                try {
+                    ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                    if (clipboard != null) {
+                        ClipData clip = ClipData.newPlainText("ADB Command", adbCommandText.getText().toString());
+                        clipboard.setPrimaryClip(clip);
+                        Toast.makeText(ADBModeActivity.this, getString(R.string.adb_mode_copied), Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(ADBModeActivity.this, "Clipboard not available", Toast.LENGTH_SHORT).show();
+                    }
+                } catch (Exception e) {
+                    Toast.makeText(ADBModeActivity.this, "Error copying command", Toast.LENGTH_SHORT).show();
+                }
             }
         });
-        statusText.setText(""); // Placeholder for status
+        
+        if (statusText != null) {
+            statusText.setText(""); // Placeholder for status
+        }
     }
 }

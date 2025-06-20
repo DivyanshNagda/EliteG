@@ -135,4 +135,8 @@
     <string name="permission_check_timeout">Permission check timed out. Please try again.</string>
     <string name="storage_permission_rationale">Storage permissions are required for full functionality.</string>
     <string name="storage_permission_denied">Storage permission denied. Some features may not work.</string>
+    
+    <!-- Additional error strings -->
+    <string name="error_settings_not_initialized">Settings not initialized</string>
+    <string name="error_invalid_game_index">Invalid game index</string>
 </resources>

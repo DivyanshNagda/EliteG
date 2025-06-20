@@ -1,6 +1,7 @@
 package com.dnagda.eliteG;
 
 import android.Manifest;
+import android.app.AppOpsManager;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -12,6 +13,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.transition.TransitionManager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -32,9 +34,12 @@ import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.dnagda.eliteG.utils.AccessibilityUtils;
 import com.dnagda.eliteG.utils.Constants;
 import com.dnagda.eliteG.utils.Logger;
+import com.dnagda.eliteG.utils.PerformanceMonitor;
 import com.dnagda.eliteG.utils.PerformanceUtils;
+import com.dnagda.eliteG.utils.ThreadUtils;
 import com.dnagda.eliteG.utils.UIUtils;
 import com.dnagda.eliteG.SettingsManager;
 import com.dnagda.eliteG.GameApp;
@@ -81,14 +86,13 @@ public class MainActivity extends AppCompatActivity {
     private TextView[] recentGameTitles = new TextView[Constants.MAX_RECENT_GAMES];
     private ImageButton[] recentGameIcons = new ImageButton[Constants.MAX_RECENT_GAMES];
 
-    // 1. Add field for permission timer
-    private Timer permissionTimer;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Logger.d(TAG, "MainActivity onCreate started");
-        try {
+        
+        // Start performance monitoring
+        try (PerformanceMonitor.OperationTimer timer = PerformanceMonitor.time("MainActivity.onCreate")) {
             setContentView(R.layout.activity_main);
             
             // Initialize core components
@@ -113,25 +117,18 @@ public class MainActivity extends AppCompatActivity {
             // Setup event listeners
             setupEventListeners();
             
-            // Storage permission check
-            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE)
-                    != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE, android.Manifest.permission.READ_EXTERNAL_STORAGE},
-                        STORAGE_PERMISSION_CODE);
-            } 
+            // Storage permission check (only for older Android versions)
+            checkStoragePermissions(); 
             
-            // Check WRITE_SECURE_SETTINGS permission
-            checkWriteSecureSettingsPermission();
+            // --- Centralized robust permission check ---
+            checkPermissions();
             Logger.d(TAG, "MainActivity onCreate completed successfully");
-            
         } catch (Exception e) {
             Logger.e(TAG, "Error in onCreate", e);
             UIUtils.showToast(this, "Error initializing app");
             finish();
         }
+        // Performance monitoring auto-closes with try-with-resources
     }
     
     /**
@@ -167,16 +164,16 @@ public class MainActivity extends AppCompatActivity {
      */
     private void initializeUI() {
         try {
-            // Find and initialize UI components
+            // Find and initialize UI components with comprehensive null checks
             fpsPercentageText = findViewById(R.id.textViewPercentage);
             tweakedResolutionText = findViewById(R.id.textViewTweakedResolution);
             resolutionSeekBar = findViewById(R.id.seekBarRes);
             circularProgressBar = findViewById(R.id.progressBar);
             settingsSwitch = findViewById(R.id.imageButtonSettingSwitch);
             
-            // Null checks
-            if (fpsPercentageText == null || tweakedResolutionText == null || resolutionSeekBar == null || circularProgressBar == null || settingsSwitch == null) {
-                Logger.e(TAG, "Critical UI component missing");
+            // Critical UI component validation with detailed error reporting
+            if (!validateCriticalUIComponents()) {
+                Logger.e(TAG, "Critical UI component missing - cannot continue");
                 UIUtils.showToast(this, getString(R.string.ui_init_error));
                 finish();
                 return;
@@ -759,17 +756,30 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
-    void showRemoveGamePopup(Context context, final int gameAppIndex){
+    private void showRemoveGamePopup(Context context, final int gameAppIndex){
+        if (context == null) {
+            Logger.e(TAG, "Context is null - cannot show remove game popup");
+            return;
+        }
+        
+        if (isFinishing() || isDestroyed()) {
+            Logger.w(TAG, "Activity is finishing - cannot show dialog");
+            return;
+        }
+        
         final Dialog gameListPopUp = new Dialog(this);
 
         final int xScreen = context.getResources().getDisplayMetrics().widthPixels;
         final int yScreen = context.getResources().getDisplayMetrics().heightPixels;
 
         gameListPopUp.setContentView(R.layout.add_game_layout);
-        gameListPopUp.getWindow().setLayout((int) Math.ceil(xScreen*0.90),(int) Math.min(Math.ceil(yScreen*0.85), 204*2 /*204 x number of items*/) );//The magic number 200 correspond to one GameApp item + one space
+        gameListPopUp.getWindow().setLayout(
+            (int) Math.ceil(xScreen * Constants.DIALOG_WIDTH_RATIO),
+            (int) Math.min(Math.ceil(yScreen * Constants.DIALOG_HEIGHT_RATIO), Constants.GAME_ITEM_HEIGHT * 2)
+        );
 
-        LinearLayout layout = (LinearLayout) gameListPopUp.findViewById(R.id.gameListLayout);
-        LayoutInflater inflater = (LayoutInflater) this.getSystemService(LAYOUT_INFLATER_SERVICE);
+        LinearLayout layout = gameListPopUp.findViewById(R.id.gameListLayout);
+        LayoutInflater inflater = getLayoutInflater();
 
 
 
@@ -867,73 +877,92 @@ public class MainActivity extends AppCompatActivity {
     private void removeGameUI(int index) {
         Logger.d(TAG, "Removing game from UI at index: " + index);
         
+        if (settingsManager == null) {
+            Logger.e(TAG, "SettingsManager is null - cannot remove game");
+            UIUtils.showToast(this, getString(R.string.error_settings_not_initialized));
+            return;
+        }
+        
+        if (index < 0 || index >= Constants.MAX_RECENT_GAMES) {
+            Logger.e(TAG, "Invalid game index for removal: " + index);
+            UIUtils.showToast(this, getString(R.string.error_invalid_game_index));
+            return;
+        }
+        
         try {
             settingsManager.removeGameApp(index);
-            loadRecentGamesUI();
-            UIUtils.showToast(this, "Game removed successfully");
+            
+            // Refresh UI on main thread
+            if (!isFinishing() && !isDestroyed()) {
+                runOnUiThread(() -> {
+                    loadRecentGamesUI();
+                    UIUtils.showToast(this, getString(R.string.game_removed_success));
+                });
+            }
         } catch (Exception e) {
             Logger.e(TAG, "Error removing game from UI", e);
-            UIUtils.showToast(this, "Error removing game");
+            if (!isFinishing() && !isDestroyed()) {
+                runOnUiThread(() -> UIUtils.showToast(this, getString(R.string.error_removing_game)));
+            }
         }
     }
 
-    // Permission check for WRITE_SECURE_SETTINGS
-    private boolean hasWriteSecureSettingsPermission() {
-        return ContextCompat.checkSelfPermission(this, "android.permission.WRITE_SECURE_SETTINGS")
-                == PackageManager.PERMISSION_GRANTED;
+    // --- Step 1: Add robust AppOpsManager-based permission check ---
+    private boolean hasSecureSettingsPermission() {
+        try {
+            android.app.AppOpsManager appOps = (android.app.AppOpsManager) getSystemService(Context.APP_OPS_SERVICE);
+            int mode;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                mode = appOps.unsafeCheckOpNoThrow("android:write_secure_settings",
+                        getApplicationInfo().uid, getPackageName());
+            } else {
+                mode = appOps.checkOpNoThrow("android:write_secure_settings",
+                        getApplicationInfo().uid, getPackageName());
+            }
+            Logger.d(TAG, "AppOpsManager mode: " + mode);
+            return mode == android.app.AppOpsManager.MODE_ALLOWED;
+        } catch (Exception e) {
+            Logger.e(TAG, "Failed to check WRITE_SECURE_SETTINGS", e);
+            return false;
+        }
     }
 
-    // Show permission dialog and check logic
-    private void checkWriteSecureSettingsPermission() {
-        if (hasWriteSecureSettingsPermission())
+    // --- Step 2: Centralized permission check and dialog with SharedPreferences flag and reboot prompt ---
+    private void checkPermissions() {
+        android.content.SharedPreferences sharedPrefs = getSharedPreferences("eliteg_prefs", MODE_PRIVATE);
+        boolean setupComplete = sharedPrefs.getBoolean("setup_complete", false);
+        if (hasSecureSettingsPermission()) {
+            if (!setupComplete) {
+                sharedPrefs.edit().putBoolean("setup_complete", true).apply();
+            }
+            Logger.d(TAG, "WRITE_SECURE_SETTINGS permission granted");
+            // Permission granted, proceed as normal
             return;
-
-    final AlertDialog dialog = new AlertDialog.Builder(this)
-            .setTitle("Missing Permissions")
-            .setMessage(getString(R.string.adb_tutorial) + "adb shell pm grant com.dnagda.eliteG android.permission.WRITE_SECURE_SETTINGS")
-            .setPositiveButton("Check Again", null)
-            .setNeutralButton("Setup ADB", null)
-            .setCancelable(false)
-            .create();
-
-    dialog.setOnShowListener(d -> {
-        // "Check Again" button
-        Button positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
-        positiveButton.setOnClickListener(v -> {
-            if (hasWriteSecureSettingsPermission()) {
+        }
+        if (setupComplete) {
+            // User had permission before, but now it's missing (rare). Show dialog anyway.
+            Logger.d(TAG, "Permission lost after setup_complete. Showing dialog.");
+        }
+        // Show dialog only if permission is NOT granted
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Permission Required");
+        builder.setMessage("EliteG needs ADB-granted permission to function.\n\nPlease run:\n\nadb shell pm grant " + getPackageName() + " android.permission.WRITE_SECURE_SETTINGS");
+        builder.setCancelable(false);
+        builder.setPositiveButton("Check Again", (dialog, which) -> {
+            if (hasSecureSettingsPermission()) {
+                sharedPrefs.edit().putBoolean("setup_complete", true).apply();
+                Toast.makeText(this, "Permission granted!", Toast.LENGTH_SHORT).show();
                 dialog.dismiss();
-                recreate(); // Refresh activity to unlock features
+                // Optional: reload activity or mark setup complete
             } else {
-                Toast.makeText(this, getString(R.string.permission_not_granted), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Permission not granted yet", Toast.LENGTH_SHORT).show();
             }
         });
-        // "Setup ADB" button
-        Button neutralButton = dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
-        neutralButton.setOnClickListener(v -> {
-            Uri uri = Uri.parse("https://github.com/DivyanshNagda/EliteG");
-            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-            startActivity(intent);
+        builder.setNegativeButton("Exit App", (dialog, which) -> finish());
+        builder.setNeutralButton("Restart Device", (dialog, which) -> {
+            Toast.makeText(this, "Please reboot your device manually.", Toast.LENGTH_LONG).show();
         });
-    });
-    dialog.show();
-    permissionTimer = new Timer();
-    final long startTime = System.currentTimeMillis();
-    permissionTimer.scheduleAtFixedRate(new TimerTask() {
-        @Override
-        public void run() {
-            runOnUiThread(() -> {
-                if (hasWriteSecureSettingsPermission()) {
-                    dialog.dismiss();
-                    recreate(); // Refresh activity to unlock features
-                    permissionTimer.cancel();
-                } else if (System.currentTimeMillis() - startTime > 30000) { // 30s timeout
-                    dialog.dismiss();
-                    permissionTimer.cancel();
-                    Toast.makeText(MainActivity.this, getString(R.string.permission_check_timeout), Toast.LENGTH_LONG).show();
-                }
-            });
-        }
-    }, 0, 1000);
+        builder.show();
     }
     
     @Override
@@ -950,8 +979,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         Logger.d(TAG, "MainActivity resumed");
-        // Always check permission again when resuming
-        checkWriteSecureSettingsPermission();
+        // Always check permission again when resuming (auto-dismiss if granted)
+        checkPermissions();
         if (settingsManager != null) {
             // Refresh recent games in case something changed
             loadRecentGamesUI();
@@ -967,11 +996,100 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (permissionTimer != null) {
-            permissionTimer.cancel();
-            permissionTimer = null;
-        }
         Logger.d(TAG, "MainActivity destroyed");
+        
+        // Critical: Clean up all references to prevent memory leaks
+        cleanupResources();
+    }
+    
+    /**
+     * Comprehensive resource cleanup to prevent memory leaks
+     */
+    private void cleanupResources() {
+        try {
+            // Clear UI component references
+            fpsPercentageText = null;
+            tweakedResolutionText = null;
+            resolutionSeekBar = null;
+            circularProgressBar = null;
+            settingsSwitch = null;
+            
+            // Clear arrays and lists
+            if (optionCheckboxes != null) {
+                for (int i = 0; i < optionCheckboxes.length; i++) {
+                    optionCheckboxes[i] = null;
+                }
+                optionCheckboxes = null;
+            }
+            
+            if (recentGameApps != null) {
+                for (int i = 0; i < recentGameApps.length; i++) {
+                    recentGameApps[i] = null;
+                }
+                recentGameApps = null;
+            }
+            
+            if (recentGameTitles != null) {
+                for (int i = 0; i < recentGameTitles.length; i++) {
+                    recentGameTitles[i] = null;
+                }
+                recentGameTitles = null;
+            }
+            
+            if (recentGameIcons != null) {
+                for (int i = 0; i < recentGameIcons.length; i++) {
+                    recentGameIcons[i] = null;
+                }
+                recentGameIcons = null;
+            }
+            
+            // Clear game list
+            if (gameList != null) {
+                gameList.clear();
+                gameList = null;
+            }
+            
+            // Clear constraint sets
+            layoutSettingsHidden = null;
+            layoutSettingShown = null;
+            
+            // Clear coefficients array
+            if (coefficients != null) {
+                coefficients = null;
+            }
+            
+            // Settings manager cleanup handled by its own lifecycle
+            settingsManager = null;
+            
+            Logger.d(TAG, "Resource cleanup completed");
+        } catch (Exception e) {
+            Logger.e(TAG, "Error during resource cleanup", e);
+        }
+    }
+    
+    /**
+     * Validate that all critical UI components are properly initialized
+     */
+    private boolean validateCriticalUIComponents() {
+        String[] missingComponents = new String[5];
+        int missingCount = 0;
+        
+        if (fpsPercentageText == null) missingComponents[missingCount++] = "fpsPercentageText";
+        if (tweakedResolutionText == null) missingComponents[missingCount++] = "tweakedResolutionText";
+        if (resolutionSeekBar == null) missingComponents[missingCount++] = "resolutionSeekBar";
+        if (circularProgressBar == null) missingComponents[missingCount++] = "circularProgressBar";
+        if (settingsSwitch == null) missingComponents[missingCount++] = "settingsSwitch";
+        
+        if (missingCount > 0) {
+            StringBuilder errorMsg = new StringBuilder("Missing UI components: ");
+            for (int i = 0; i < missingCount; i++) {
+                errorMsg.append(missingComponents[i]);
+                if (i < missingCount - 1) errorMsg.append(", ");
+            }
+            Logger.e(TAG, errorMsg.toString());
+            return false;
+        }
+        return true;
     }
 
     /**

@@ -2,11 +2,14 @@ package com.dnagda.eliteG.utils;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.graphics.Insets;
 import android.graphics.Point;
 import android.os.Build;
 import android.util.DisplayMetrics;
 import android.view.Display;
+import android.view.WindowInsets;
 import android.view.WindowManager;
+import android.view.WindowMetrics;
 import android.widget.Toast;
 
 /**
@@ -21,25 +24,37 @@ public final class UIUtils {
     }
     
     /**
-     * Get screen width in pixels
+     * Get screen width in pixels (modern API compatible)
      */
     public static int getScreenWidth(Context context) {
-        WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
-        Display display = windowManager.getDefaultDisplay();
-        Point size = new Point();
-        display.getRealSize(size);
-        return size.x;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+            return windowManager.getCurrentWindowMetrics().getBounds().width();
+        } else {
+            // Fallback for older devices
+            WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+            Display display = windowManager.getDefaultDisplay();
+            Point size = new Point();
+            display.getRealSize(size);
+            return size.x;
+        }
     }
     
     /**
-     * Get screen height in pixels
+     * Get screen height in pixels (modern API compatible)
      */
     public static int getScreenHeight(Context context) {
-        WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
-        Display display = windowManager.getDefaultDisplay();
-        Point size = new Point();
-        display.getRealSize(size);
-        return size.y;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+            return windowManager.getCurrentWindowMetrics().getBounds().height();
+        } else {
+            // Fallback for older devices
+            WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+            Display display = windowManager.getDefaultDisplay();
+            Point size = new Point();
+            display.getRealSize(size);
+            return size.y;
+        }
     }
     
     /**
@@ -164,10 +179,16 @@ public final class UIUtils {
     }
     
     /**
-     * Check if device has navigation bar
+     * Check if device has navigation bar (modern API compatible)
      */
     public static boolean hasNavigationBar(Context context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+            WindowMetrics windowMetrics = windowManager.getCurrentWindowMetrics();
+            WindowInsets windowInsets = windowMetrics.getWindowInsets();
+            Insets navigationInsets = windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.navigationBars());
+            return navigationInsets.bottom > 0 || navigationInsets.left > 0 || navigationInsets.right > 0;
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
             WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
             Display display = windowManager.getDefaultDisplay();
             

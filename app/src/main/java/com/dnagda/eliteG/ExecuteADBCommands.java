@@ -33,8 +33,9 @@ import java.util.regex.Pattern;
 public class ExecuteADBCommands {
     private static final String TAG = "ADBCommands";
     
-    // Thread pool for background ADB operations
-    private static final ExecutorService EXECUTOR = Executors.newCachedThreadPool();
+    // Thread pool for background ADB operations with proper synchronization
+    private static volatile ExecutorService EXECUTOR;
+    private static final Object EXECUTOR_LOCK = new Object();
     
     // Security: Allowed ADB command prefixes
     private static final Set<String> ALLOWED_COMMANDS = new HashSet<>(Arrays.asList(
@@ -58,18 +59,46 @@ public class ExecuteADBCommands {
     }
     
     /**
-     * Cleanup resources when app is destroyed
+     * Get or create executor with thread safety
+     */
+    private static ExecutorService getExecutor() {
+        if (EXECUTOR == null) {
+            synchronized (EXECUTOR_LOCK) {
+                if (EXECUTOR == null) {
+                    EXECUTOR = Executors.newCachedThreadPool(r -> {
+                        Thread thread = new Thread(r, "ADB-Command-" + System.currentTimeMillis());
+                        thread.setDaemon(true);
+                        return thread;
+                    });
+                }
+            }
+        }
+        return EXECUTOR;
+    }
+
+    /**
+     * Cleanup resources when app is destroyed with enhanced thread safety
      */
     public static void cleanup() {
-        if (!EXECUTOR.isShutdown()) {
-            EXECUTOR.shutdown();
-            try {
-                if (!EXECUTOR.awaitTermination(5, TimeUnit.SECONDS)) {
+        synchronized (EXECUTOR_LOCK) {
+            if (EXECUTOR != null && !EXECUTOR.isShutdown()) {
+                EXECUTOR.shutdown();
+                try {
+                    if (!EXECUTOR.awaitTermination(5, TimeUnit.SECONDS)) {
+                        Logger.w(TAG, "Executor did not terminate gracefully, forcing shutdown");
+                        EXECUTOR.shutdownNow();
+                        
+                        if (!EXECUTOR.awaitTermination(2, TimeUnit.SECONDS)) {
+                            Logger.e(TAG, "Executor did not terminate after forced shutdown");
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    Logger.w(TAG, "Interrupted while shutting down executor", e);
                     EXECUTOR.shutdownNow();
+                    Thread.currentThread().interrupt();
+                } finally {
+                    EXECUTOR = null;
                 }
-            } catch (InterruptedException e) {
-                EXECUTOR.shutdownNow();
-                Thread.currentThread().interrupt();
             }
         }
     }
@@ -92,21 +121,29 @@ public class ExecuteADBCommands {
     }
 
     /**
-     * Validate and sanitize ADB command for security
+     * Validate and sanitize ADB command for security with comprehensive validation
      */
     private static boolean isValidCommand(String command) {
         if (command == null || command.trim().isEmpty()) {
             return false;
         }
         
+        String trimmedCommand = command.trim();
+        
         // Check for dangerous characters
-        if (DANGEROUS_CHARS.matcher(command).find()) {
-            Logger.w(TAG, "Command contains dangerous characters: " + command);
+        if (DANGEROUS_CHARS.matcher(trimmedCommand).find()) {
+            Logger.w(TAG, "Command contains dangerous characters: " + trimmedCommand);
             return false;
         }
         
-        // Check if command starts with allowed prefix
-        String[] parts = command.trim().split("\\s+");
+        // Check command length to prevent buffer overflow attempts
+        if (trimmedCommand.length() > 512) {
+            Logger.w(TAG, "Command too long: " + trimmedCommand.length() + " characters");
+            return false;
+        }
+        
+        // Parse and validate command structure
+        String[] parts = trimmedCommand.split("\\s+");
         if (parts.length == 0) {
             return false;
         }
@@ -116,9 +153,54 @@ public class ExecuteADBCommands {
         
         if (!isAllowed) {
             Logger.w(TAG, "Command not in allowed list: " + commandPrefix);
+            return false;
         }
         
-        return isAllowed;
+        // Additional validation based on command type
+        return validateCommandArguments(commandPrefix, parts);
+    }
+    
+    /**
+     * Validate command arguments based on command type
+     */
+    private static boolean validateCommandArguments(String command, String[] parts) {
+        switch (command) {
+            case "settings":
+                // Validate settings commands
+                if (parts.length < 3) return false;
+                String action = parts[1];
+                return "put".equals(action) || "get".equals(action) || "delete".equals(action);
+                
+            case "wm":
+                // Validate window manager commands
+                if (parts.length < 2) return false;
+                String wmAction = parts[1];
+                return "size".equals(wmAction) || "density".equals(wmAction);
+                
+            case "am":
+                // Validate activity manager commands
+                if (parts.length < 2) return false;
+                String amAction = parts[1];
+                return "force-stop".equals(amAction) || "kill-all".equals(amAction);
+                
+            case "pm":
+                // Validate package manager commands  
+                if (parts.length < 2) return false;
+                String pmAction = parts[1];
+                return "grant".equals(pmAction) || "revoke".equals(pmAction);
+                
+            case "dumpsys":
+                // Validate dumpsys commands
+                return parts.length >= 2;
+                
+            case "getprop":
+                // Validate getprop commands
+                return parts.length <= 2; // getprop [key]
+                
+            default:
+                Logger.w(TAG, "Unknown command validation: " + command);
+                return false;
+        }
     }
     
     /**
@@ -133,12 +215,13 @@ public class ExecuteADBCommands {
     }
     // --- End of WriteSettings functionality ---
 
+    
     /**
-     * Check if ADB permissions are granted (specifically WRITE_SECURE_SETTINGS)
+     * @deprecated Use isWriteSecureSettingsGranted(Context) instead for robust detection.
      */
+    @Deprecated
     public static boolean hasADBPermissions() {
         try {
-            // Fix: Use pure Java filtering, avoid pipe/grep for compatibility
             CommandResult result = executeWithResult("dumpsys package " + Constants.APP_PACKAGE_NAME);
             return result.success && result.output.contains("WRITE_SECURE_SETTINGS") 
                 && result.output.contains("granted=true");
@@ -256,19 +339,19 @@ public class ExecuteADBCommands {
         String sanitizedCommand = sanitizeCommand(command);
         Logger.logAdbCommand(sanitizedCommand);
         
+        Process process = null;
         try {
-            Process process = Runtime.getRuntime().exec(sanitizedCommand);
+            process = Runtime.getRuntime().exec(sanitizedCommand);
             
             // Set timeout for command execution
             boolean finished = process.waitFor(Constants.ADB_COMMAND_TIMEOUT_MS, TimeUnit.MILLISECONDS);
             
             if (!finished) {
-                process.destroyForcibly();
                 Logger.e(TAG, "Command timed out: " + sanitizedCommand);
                 return new CommandResult(false, -1, "", "Command timed out");
             }
             
-            // Read output streams
+            // Read output streams with proper resource management
             String output = readStream(process.getInputStream());
             String error = readStream(process.getErrorStream());
             int exitCode = process.exitValue();
@@ -288,17 +371,45 @@ public class ExecuteADBCommands {
         } catch (SecurityException e) {
             Logger.e(TAG, "SecurityException executing command: " + sanitizedCommand, e);
             return new CommandResult(false, -1, "", "Security error: " + e.getMessage());
+        } finally {
+            // Properly cleanup process resources
+            if (process != null) {
+                try {
+                    process.getInputStream().close();
+                } catch (IOException e) {
+                    Logger.w(TAG, "Error closing input stream", e);
+                }
+                try {
+                    process.getErrorStream().close();
+                } catch (IOException e) {
+                    Logger.w(TAG, "Error closing error stream", e);
+                }
+                try {
+                    process.getOutputStream().close();
+                } catch (IOException e) {
+                    Logger.w(TAG, "Error closing output stream", e);
+                }
+                process.destroyForcibly();
+            }
         }
     }
 
     // Fix 1: Use correct line separator in readStream()
     private static String readStream(java.io.InputStream inputStream) throws IOException {
+        if (inputStream == null) {
+            Logger.w(TAG, "InputStream is null, returning empty string");
+            return "";
+        }
+        
         StringBuilder output = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                output.append(line).append(System.lineSeparator()); // FIXED
+                output.append(line).append(System.lineSeparator());
             }
+        } catch (IOException e) {
+            Logger.e(TAG, "Error reading stream", e);
+            throw e;
         }
         return output.toString().trim();
     }

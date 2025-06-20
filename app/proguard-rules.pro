@@ -1,67 +1,75 @@
-# EliteG - Android Game Booster ProGuard Rules
-# Optimized for performance and security
+# EliteG ProGuard Configuration
+# Optimized for production builds
 
-# Keep line numbers for debugging
--keepattributes SourceFile,LineNumberTable
--renamesourcefileattribute SourceFile
+# Add project specific ProGuard rules here.
+# You can control the set of applied configuration files using the
+# proguardFiles setting in build.gradle.
 
-# Keep annotations
--keepattributes *Annotation*
+# For more details, see
+#   http://developer.android.com/guide/developing/tools/proguard.html
 
-# Keep generic signatures for reflection
--keepattributes Signature
+# If your project uses WebView with JS, uncomment the following
+# and specify the fully qualified class name to the JavaScript interface
+# class:
+#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
+#   public *;
+#}
 
-# Keep inner classes
--keepattributes InnerClasses,EnclosingMethod
+# Uncomment this to preserve the line number information for
+# debugging stack traces.
+-keepattributes LineNumberTable,SourceFile
 
-# Application classes - keep main components
--keep public class com.dnagda.eliteG.MainActivity { *; }
--keep public class com.dnagda.eliteG.SplashScreen { *; }
--keep public class com.dnagda.eliteG.ADBInstructionsActivity { *; }
+# If you keep the line number information, uncomment this to
+# hide the original source file name.
+#-renamesourcefileattribute SourceFile
 
-# Keep model classes
+# Keep all classes in our main package
+-keep class com.dnagda.eliteG.** { *; }
+
+# Keep all utility classes and their methods
+-keep class com.dnagda.eliteG.utils.** { *; }
+
+# Keep ADB command execution classes (critical for functionality)
+-keep class com.dnagda.eliteG.ExecuteADBCommands { *; }
+-keep class com.dnagda.eliteG.ExecuteADBCommands$* { *; }
+
+# Keep settings manager and game app classes
+-keep class com.dnagda.eliteG.SettingsManager { *; }
 -keep class com.dnagda.eliteG.GameApp { *; }
+-keep class com.dnagda.eliteG.GameAppManager { *; }
+
+# Keep constants class
+-keep class com.dnagda.eliteG.utils.Constants { *; }
+
+# AndroidX and Material Design
+-keep class androidx.** { *; }
+-keep class com.google.android.material.** { *; }
+
+# Keep all View classes and their methods for UI functionality
+-keep class * extends android.view.View {
+    public <init>(android.content.Context);
+    public <init>(android.content.Context, android.util.AttributeSet);
+    public <init>(android.content.Context, android.util.AttributeSet, int);
+    public void set*(...);
+    *** get*();
+}
+
+# Keep ViewBinding classes
+-keep class * extends androidx.viewbinding.ViewBinding {
+    public static * inflate(...);
+    public static * bind(...);
+}
+
+# Keep custom drawable wrapper
 -keep class com.dnagda.eliteG.WrappedDrawable { *; }
 
-# Keep manager classes with their public methods
--keep class com.dnagda.eliteG.SettingsManager {
-    public <methods>;
-}
--keep class com.dnagda.eliteG.GameAppManager {
-    public <methods>;
-}
--keep class com.dnagda.eliteG.ExecuteADBCommands {
-    public <methods>;
-}
+# Keep Activity and Service classes
+-keep class * extends android.app.Activity
+-keep class * extends android.app.Service
+-keep class * extends android.content.BroadcastReceiver
+-keep class * extends android.content.ContentProvider
 
-# AndroidX and Support Library
--keep class androidx.** { *; }
--keep interface androidx.** { *; }
--dontwarn androidx.**
-
-# Material Design Components
--keep class com.google.android.material.** { *; }
--dontwarn com.google.android.material.**
-
-# Keep native methods
--keepclasseswithmembernames class * {
-    native <methods>;
-}
-
-# Keep view constructors
--keepclasseswithmembers class * {
-    public <init>(android.content.Context, android.util.AttributeSet);
-}
--keepclasseswithmembers class * {
-    public <init>(android.content.Context, android.util.AttributeSet, int);
-}
-
-# Keep activity lifecycle methods
--keepclassmembers class * extends android.app.Activity {
-   public void *(android.view.View);
-}
-
-# Keep enum values
+# Keep enums
 -keepclassmembers enum * {
     public static **[] values();
     public static ** valueOf(java.lang.String);
@@ -72,7 +80,7 @@
   public static final android.os.Parcelable$Creator *;
 }
 
-# Keep Serializable classes
+# Keep Serializable implementations
 -keepnames class * implements java.io.Serializable
 -keepclassmembers class * implements java.io.Serializable {
     static final long serialVersionUID;
@@ -83,26 +91,51 @@
     java.lang.Object readResolve();
 }
 
-# Remove logging in release builds
--assumenosideeffects class android.util.Log {
-    public static boolean isLoggable(java.lang.String, int);
-    public static int v(...);
-    public static int i(...);
-    public static int w(...);
-    public static int d(...);
-    public static int e(...);
-}
-
-# Optimization settings
--optimizations !code/simplification/arithmetic,!code/simplification/cast,!field/*,!class/merging/*
+# Performance optimizations
+-optimizations !code/simplification/arithmetic,!field/*,!class/merging/*
 -optimizationpasses 5
 -allowaccessmodification
--dontpreverify
+-mergeinterfacesaggressively
+
+# Remove logging in release builds (except errors)
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+}
+
+# Remove our custom debug logging in release
+-assumenosideeffects class com.dnagda.eliteG.utils.Logger {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+}
+
+# Advanced optimizations
+-repackageclasses 'eliteg'
+-flattenpackagehierarchy 'eliteg'
 
 # Remove unused resources
--dontwarn org.xmlpull.v1.**
--dontwarn org.kxml2.io.**
--dontwarn android.content.res.**
+-keep class **.R
+-keep class **.R$* { *; }
 
-# Keep crash reporting
--keepattributes SourceFile,LineNumberTable
+# Keep native methods
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# Keep annotations
+-keepattributes *Annotation*
+-keep @interface *
+
+# Keep runtime visible annotations
+-keepattributes RuntimeVisibleAnnotations
+-keepattributes RuntimeVisibleParameterAnnotations
+-keepattributes RuntimeVisibleTypeAnnotations
+
+# Security: Obfuscate sensitive method names but keep functionality
+-keepclassmembers class com.dnagda.eliteG.ExecuteADBCommands {
+    public static boolean hasADBPermissions();
+    public static boolean execute(...);
+    public static *** executeWithResult(...);
+}

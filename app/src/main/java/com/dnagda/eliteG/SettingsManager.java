@@ -26,14 +26,16 @@ public class SettingsManager {
     
     // Core components
     private final SharedPreferences preferences;
-    private final Activity activity;
+    private final Context context; // Use Application context to avoid memory leaks
     private final int[] displayStats = new int[3]; // Width, Height, DPI
 
     public SettingsManager(Activity activity) {
-        this.activity = activity;
+        // Use Application context to avoid memory leaks
+        this.context = activity.getApplicationContext();
         this.preferences = activity.getSharedPreferences(Constants.SETTINGS_FILE_NAME, Context.MODE_PRIVATE);
         
-        initializeDisplayStats();
+        // Initialize display stats using the activity context (safe for one-time operation)
+        initializeDisplayStats(activity);
         loadSettings();
         
         Logger.d(TAG, "SettingsManager initialized with display: " + 
@@ -43,7 +45,7 @@ public class SettingsManager {
     /**
      * Initialize display statistics
      */
-    private void initializeDisplayStats() {
+    private void initializeDisplayStats(Activity activity) {
         displayStats[0] = UIUtils.getScreenWidth(activity);
         displayStats[1] = UIUtils.getScreenHeight(activity);
         displayStats[2] = UIUtils.getScreenDensity(activity);
@@ -100,7 +102,10 @@ public class SettingsManager {
             return null;
         }
         String packageName = preferences.getString(index + Constants.PREF_GAME_SUFFIX, "");
-        return GameAppManager.getGameApp(activity, packageName);
+        if (packageName == null || packageName.isEmpty()) {
+            return null;
+        }
+        return GameAppManager.getGameApp(context, packageName);
     }
 
     public boolean isLMKActivated() {
@@ -127,7 +132,7 @@ public class SettingsManager {
      * Get recommended resolution scale based on device capabilities
      */
     public int getRecommendedResolutionScale() {
-        return PerformanceUtils.getRecommendedResolutionScale(activity, getCurrentWidth(), getCurrentHeight());
+        return PerformanceUtils.getRecommendedResolutionScale(context, getCurrentWidth(), getCurrentHeight());
     }
 
 
@@ -152,7 +157,8 @@ public class SettingsManager {
         int recommendedScale = getRecommendedResolutionScale();
         editor.putInt(Constants.PREF_LAST_RESOLUTION_SCALE, recommendedScale);
         
-        boolean success = editor.commit();
+        editor.apply(); // Non-blocking
+        boolean success = true;
         Logger.d(TAG, "First launch initialization " + (success ? "successful" : "failed"));
     }
 
@@ -197,7 +203,8 @@ public class SettingsManager {
         
         SharedPreferences.Editor editor = preferences.edit();
         editor.putString((index + 1) + Constants.PREF_GAME_SUFFIX, packageName);
-        boolean success = editor.commit();
+        editor.apply(); // Non-blocking
+        boolean success = true;
         
         Logger.d(TAG, "Game app " + packageName + " " + (success ? "added" : "failed to add") + 
                 " at index " + index);
@@ -211,7 +218,8 @@ public class SettingsManager {
         
         SharedPreferences.Editor editor = preferences.edit();
         editor.putString((index + 1) + Constants.PREF_GAME_SUFFIX, "");
-        boolean success = editor.commit();
+        editor.apply(); // Non-blocking
+        boolean success = true;
         
         Logger.d(TAG, "Game app " + (success ? "removed" : "failed to remove") + 
                 " from index " + index);
@@ -231,7 +239,8 @@ public class SettingsManager {
         
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean(Constants.PREF_AGGRESSIVE_LMK, state);
-        boolean success = editor.commit();
+        editor.apply(); // Non-blocking
+        boolean success = true;
         
         Logger.d(TAG, "LMK setting " + (success ? "updated" : "failed to update") + 
                 " to " + state);
@@ -242,7 +251,8 @@ public class SettingsManager {
         
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean(Constants.PREF_IS_MURDERER, state);
-        boolean success = editor.commit();
+        editor.apply(); // Non-blocking
+        boolean success = true;
         
         Logger.d(TAG, "Murderer setting " + (success ? "updated" : "failed to update") + 
                 " to " + state);
@@ -253,7 +263,8 @@ public class SettingsManager {
         
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean(Constants.PREF_KEEP_STOCK_DPI, state);
-        boolean success = editor.commit();
+        editor.apply(); // Non-blocking
+        boolean success = true;
         
         Logger.d(TAG, "Keep stock DPI setting " + (success ? "updated" : "failed to update") + 
                 " to " + state);
@@ -264,7 +275,8 @@ public class SettingsManager {
         
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt(Constants.PREF_LAST_RESOLUTION_SCALE, validatedScale);
-        boolean success = editor.commit();
+        editor.apply(); // Non-blocking
+        boolean success = true;
         
         Logger.d(TAG, "Resolution scale " + (success ? "updated" : "failed to update") + 
                 " to " + validatedScale);
@@ -275,7 +287,8 @@ public class SettingsManager {
         
         SharedPreferences.Editor editor = preferences.edit();
         editor.putBoolean(Constants.PREF_IS_ROOT, state);
-        boolean success = editor.commit();
+        editor.apply(); // Non-blocking
+        boolean success = true;
         
         Logger.d(TAG, "Root state " + (success ? "updated" : "failed to update") + 
                 " to " + state);
@@ -293,7 +306,8 @@ public class SettingsManager {
         
         SharedPreferences.Editor editor = preferences.edit();
         editor.clear();
-        boolean success = editor.commit();
+        editor.apply(); // Non-blocking
+        boolean success = true;
         
         if (success) {
             loadSettings(); // Reload default settings

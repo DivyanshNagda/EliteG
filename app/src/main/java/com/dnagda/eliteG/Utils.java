@@ -2,6 +2,7 @@ package com.dnagda.eliteG;
 
 import android.content.Context;
 import java.io.*;
+import com.dnagda.eliteG.utils.Logger;
 
 public class Utils {
     public static void copyAssetToExternal(Context context, String assetName, String outPath) {
@@ -13,7 +14,7 @@ public class Utils {
                 out.write(buffer, 0, read);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Logger.e("Utils", "Exception in utility method", e);
         }
     }
 }

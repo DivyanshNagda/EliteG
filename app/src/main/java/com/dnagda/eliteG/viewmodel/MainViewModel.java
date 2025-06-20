@@ -95,17 +95,23 @@ public class MainViewModel extends ViewModel {
         ExecuteADBCommands.hasADBPermissionsAsync(new ExecuteADBCommands.ADBCallback() {
             @Override
             public void onSuccess(ExecuteADBCommands.CommandResult result) {
-                isLoading.setValue(false);
-                adbPermissionsGranted.setValue(true);
-                Logger.d(TAG, "ADB permissions granted");
+                // Check if ViewModel is still active
+                if (mainActivity != null && !mainActivity.isDestroyed()) {
+                    isLoading.setValue(false);
+                    adbPermissionsGranted.setValue(true);
+                    Logger.d(TAG, "ADB permissions granted");
+                }
             }
 
             @Override
             public void onError(String error) {
-                isLoading.setValue(false);
-                adbPermissionsGranted.setValue(false);
-                errorMessage.setValue("ADB permissions not granted: " + error);
-                Logger.e(TAG, "ADB permissions check failed: " + error);
+                // Check if ViewModel is still active
+                if (mainActivity != null && !mainActivity.isDestroyed()) {
+                    isLoading.setValue(false);
+                    adbPermissionsGranted.setValue(false);
+                    errorMessage.setValue("ADB permissions not granted: " + error);
+                    Logger.e(TAG, "ADB permissions check failed: " + error);
+                }
             }
         });
     }
